@@ -63,6 +63,20 @@ func MustLoadByPath(configPath string, envPath string) *Config {
 	return &cfg
 }
 
+func MigrateMustLoad() *Postgres {
+	cfg := new(Postgres)
+
+	if err := godotenv.Load(".env"); err != nil {
+		panic("failed to load .env file: " + err.Error())
+	}
+
+	if err := cleanenv.ReadEnv(cfg); err != nil {
+		panic("failed to read config: " + err.Error())
+	}
+
+	return cfg
+}
+
 // flag > env > default
 func fetchConfigPath() string {
 	var res string
