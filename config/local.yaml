@@ -1,0 +1,5 @@
+env: "local"
+
+http:
+  port: 12021
+  timeout: 10h
