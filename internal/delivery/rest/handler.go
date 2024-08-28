@@ -1,9 +1,11 @@
 package rest
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 
+	"github.com/blankspace9/notes-app/internal/domain/models"
 	"github.com/gorilla/mux"
 )
 
@@ -14,9 +16,13 @@ type Handler struct {
 }
 
 type AuthService interface {
+	RegisterUser(ctx context.Context, email, password string) (userID int64, err error)
+	Login(ctx context.Context, email, password string) (accessToken string, refreshToken string, err error)
 }
 
 type NotesService interface {
+	CreateNote(ctx context.Context, userID int64, text string) (noteID int64, err error)
+	GetNotes(ctx context.Context, userID int64) (notes []models.Note, err error)
 }
 
 func New(log *slog.Logger, as AuthService, ns NotesService) *Handler {
