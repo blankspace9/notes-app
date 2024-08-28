@@ -14,6 +14,7 @@ type (
 		Env        string     `yaml:"env" env-default:"local"`
 		HTTPServer HTTPServer `yaml:"http"`
 		Storage    Postgres
+		JWT_SECRET string `env:"JWT_SECRET"`
 	}
 
 	HTTPServer struct {

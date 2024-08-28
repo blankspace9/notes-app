@@ -5,6 +5,7 @@ import (
 
 	httpapp "github.com/blankspace9/notes-app/internal/app/http"
 	"github.com/blankspace9/notes-app/internal/config"
+	"github.com/blankspace9/notes-app/internal/delivery/rest"
 )
 
 type App struct {
@@ -14,8 +15,12 @@ type App struct {
 func New(log *slog.Logger, cfg *config.Config) *App {
 	// TODO: storage init
 	// TODO: services init
-	// TODO: handler init
-	// TODO: app init
 
-	return &App{}
+	handler := rest.New(log, nil, nil) // TODO: add services
+
+	httpApp := httpapp.New(log, handler.InitRouter(), cfg.HTTPServer.Port, cfg.HTTPServer.Timeout)
+
+	return &App{
+		HTTPServer: httpApp,
+	}
 }
