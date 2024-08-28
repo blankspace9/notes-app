@@ -3,3 +3,7 @@ env: "local"
 http:
   port: 12021
   timeout: 10h
+
+tokens:
+  access_token_ttl: 15m
+  refresh_token_ttl: 720h

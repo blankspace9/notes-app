@@ -3,7 +3,7 @@ package app
 import (
 	"log/slog"
 
-	httpapp "github.com/blankspace9/notes-app/internal/app/http"
+	"github.com/blankspace9/notes-app/internal/app/httpapp"
 	"github.com/blankspace9/notes-app/internal/config"
 	"github.com/blankspace9/notes-app/internal/delivery/rest"
 )

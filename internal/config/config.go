@@ -13,6 +13,7 @@ type (
 	Config struct {
 		Env        string     `yaml:"env" env-default:"local"`
 		HTTPServer HTTPServer `yaml:"http"`
+		Tokens     Tokens     `yaml:"tokens"`
 		Storage    Postgres
 		JWT_SECRET string `env:"JWT_SECRET"`
 	}
@@ -20,6 +21,11 @@ type (
 	HTTPServer struct {
 		Port    int           `yaml:"port"`
 		Timeout time.Duration `yaml:"timeout"`
+	}
+
+	Tokens struct {
+		AccessTokenTTL  time.Duration `yaml:"access_token_ttl" env-required:"true"`
+		RefreshTokenTTL time.Duration `yaml:"refresh_token_ttl" env-required:"true"`
 	}
 
 	Postgres struct {
