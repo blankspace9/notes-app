@@ -3,7 +3,10 @@ package main
 import (
 	"log/slog"
 	"os"
+	"os/signal"
+	"syscall"
 
+	"github.com/blankspace9/notes-app/internal/app"
 	"github.com/blankspace9/notes-app/internal/config"
 )
 
@@ -18,7 +21,22 @@ func main() {
 
 	log := setupLogger(cfg.Env)
 
-	log.Info("starting application", slog.String("env", cfg.Env), slog.Int("port", cfg.HTTPServer.Port), slog.Any("cfg", cfg))
+	log.Info("starting application", slog.String("env", cfg.Env), slog.Int("port", cfg.HTTPServer.Port))
+
+	application := app.New(log, cfg)
+
+	go application.HTTPServer.Run()
+
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, syscall.SIGTERM, syscall.SIGINT)
+
+	sign := <-stop
+
+	log.Info("stopping application", slog.String("signal", sign.String()))
+
+	application.HTTPServer.Stop()
+
+	log.Info("application stopped")
 }
 
 func setupLogger(env string) *slog.Logger {
