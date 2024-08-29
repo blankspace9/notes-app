@@ -25,8 +25,8 @@ type AuthService interface {
 }
 
 type NotesService interface {
-	CreateNote(ctx context.Context, userID int64, text string) (noteID int64, err error)
-	GetNotes(ctx context.Context, userID int64) (notes []models.Note, err error)
+	CreateNote(ctx context.Context, note string, userID int64) (noteID int64, spellingErrors []models.SpellError, err error)
+	GetNotes(ctx context.Context, userID int64, page, limit int) (notes []models.Note, err error)
 }
 
 func New(log *slog.Logger, as AuthService, ns NotesService) *Handler {

@@ -18,8 +18,7 @@ type AuthService struct {
 	log          *slog.Logger
 	userManager  UserManager
 	tokenManager TokenManager
-	tokens       config.Tokens
-	jwtSecret    string
+	jwt          config.JWT
 }
 
 var (
@@ -44,13 +43,12 @@ type TokenManager interface {
 }
 
 // New return a new instance of the Auth service
-func New(log *slog.Logger, userManager UserManager, tokenManager TokenManager, tokens config.Tokens, jwtSecret string) *AuthService {
+func New(log *slog.Logger, userManager UserManager, tokenManager TokenManager, tokens config.JWT) *AuthService {
 	return &AuthService{
 		log:          log,
 		userManager:  userManager,
 		tokenManager: tokenManager,
-		tokens:       tokens,
-		jwtSecret:    jwtSecret,
+		jwt:          tokens,
 	}
 }
 
@@ -113,7 +111,7 @@ func (as *AuthService) Login(ctx context.Context, email, password string) (strin
 		return "", "", fmt.Errorf("%s: %w", op, ErrInvalidCredentials)
 	}
 
-	accessToken, refreshToken, err := as.NewTokens(user, as.tokens.AccessTokenTTL)
+	accessToken, refreshToken, err := as.NewTokens(user, as.jwt.AccessTokenTTL)
 	if err != nil {
 		as.log.Error("failed to generate tokens", sl.Err(err))
 
@@ -123,7 +121,7 @@ func (as *AuthService) Login(ctx context.Context, email, password string) (strin
 	token := models.Token{
 		UserId:    user.ID,
 		Token:     refreshToken,
-		ExpiresAt: time.Now().Add(as.tokens.RefreshTokenTTL),
+		ExpiresAt: time.Now().Add(as.jwt.RefreshTokenTTL),
 	}
 	err = as.tokenManager.SaveToken(ctx, token)
 	if err != nil {
@@ -179,7 +177,7 @@ func (as *AuthService) RefreshTokens(ctx context.Context, token string) (string,
 		return "", "", ErrRefreshTokenExpired
 	}
 
-	accessToken, refreshToken, err := as.NewTokens(user, as.tokens.AccessTokenTTL)
+	accessToken, refreshToken, err := as.NewTokens(user, as.jwt.AccessTokenTTL)
 	if err != nil {
 		as.log.Error("failed to generate tokens", sl.Err(err))
 
@@ -189,7 +187,7 @@ func (as *AuthService) RefreshTokens(ctx context.Context, token string) (string,
 	t := models.Token{
 		UserId:    user.ID,
 		Token:     refreshToken,
-		ExpiresAt: time.Now().Add(as.tokens.RefreshTokenTTL),
+		ExpiresAt: time.Now().Add(as.jwt.RefreshTokenTTL),
 	}
 	err = as.tokenManager.SaveToken(ctx, t)
 	if err != nil {

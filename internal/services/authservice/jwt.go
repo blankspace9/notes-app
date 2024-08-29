@@ -4,22 +4,25 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strconv"
 	"time"
 
+	"github.com/blankspace9/notes-app/internal/domain/auth"
 	"github.com/blankspace9/notes-app/internal/domain/models"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 )
 
 func (as *AuthService) NewTokens(user models.User, duration time.Duration) (string, string, error) {
-	accessToken := jwt.New(jwt.SigningMethodHS256)
+	claims := &auth.Claims{
+		Id: user.ID,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(duration)),
+		},
+	}
 
-	claims := accessToken.Claims.(jwt.MapClaims)
-	claims["sub"] = user.ID
-	claims["exp"] = time.Now().Add(duration).Unix()
+	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
-	accessTokenString, err := accessToken.SignedString([]byte(as.jwtSecret))
+	accessTokenString, err := accessToken.SignedString(as.jwt.Secret)
 	if err != nil {
 		return "", "", err
 	}
@@ -30,11 +33,11 @@ func (as *AuthService) NewTokens(user models.User, duration time.Duration) (stri
 }
 
 func (as *AuthService) ParseToken(ctx context.Context, token string) (int64, time.Time, error) {
-	t, err := jwt.ParseWithClaims(token, &jwt.RegisteredClaims{}, func(token *jwt.Token) (interface{}, error) {
+	t, err := jwt.ParseWithClaims(token, &auth.Claims{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
-		return as.jwtSecret, nil
+		return as.jwt.Secret, nil
 	})
 	if err != nil {
 		return 0, time.Time{}, err
@@ -44,17 +47,15 @@ func (as *AuthService) ParseToken(ctx context.Context, token string) (int64, tim
 		return 0, time.Time{}, errors.New("invalid token")
 	}
 
-	claims, ok := t.Claims.(*jwt.RegisteredClaims)
+	claims, ok := t.Claims.(*auth.Claims)
 	if !ok {
 		return 0, time.Time{}, errors.New("invalid claims")
 	}
 
-	subject := claims.Subject
-
-	id, err := strconv.Atoi(subject)
+	expiresAt, err := claims.GetExpirationTime()
 	if err != nil {
-		return 0, time.Time{}, errors.New("invalid subject (not a number)")
+		return 0, time.Time{}, err
 	}
 
-	return int64(id), claims.ExpiresAt.Time, nil
+	return claims.Id, expiresAt.Time, nil
 }

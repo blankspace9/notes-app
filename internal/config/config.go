@@ -11,11 +11,11 @@ import (
 
 type (
 	Config struct {
-		Env        string     `yaml:"env" env-default:"local"`
-		HTTPServer HTTPServer `yaml:"http"`
-		Tokens     Tokens     `yaml:"tokens"`
-		Storage    Postgres
-		JWT_SECRET string `env:"JWT_SECRET"`
+		Env          string     `yaml:"env" env-default:"local"`
+		HTTPServer   HTTPServer `yaml:"http"`
+		JWT          JWT        `yaml:"tokens"`
+		Storage      Postgres
+		SpellChecker SpellChecker
 	}
 
 	HTTPServer struct {
@@ -23,7 +23,8 @@ type (
 		Timeout time.Duration `yaml:"timeout"`
 	}
 
-	Tokens struct {
+	JWT struct {
+		Secret          []byte        `env:"JWT_SECRET"`
 		AccessTokenTTL  time.Duration `yaml:"access_token_ttl" env-required:"true"`
 		RefreshTokenTTL time.Duration `yaml:"refresh_token_ttl" env-required:"true"`
 	}
@@ -35,6 +36,10 @@ type (
 		DBName   string `env:"POSTGRES_DB"`
 		SSLMode  string `env:"POSTGRES_SSLMODE"`
 		Password string `env:"POSTGRES_PASSWORD"`
+	}
+
+	SpellChecker struct {
+		URL string `env:"SPELL_CHECKER_URL"`
 	}
 )
 
@@ -64,6 +69,14 @@ func MustLoadByPath(configPath string, envPath string) *Config {
 	}
 
 	if err := cleanenv.ReadEnv(&cfg.Storage); err != nil {
+		panic("failed to read config: " + err.Error())
+	}
+
+	if err := cleanenv.ReadEnv(&cfg.SpellChecker); err != nil {
+		panic("failed to read config: " + err.Error())
+	}
+
+	if err := cleanenv.ReadEnv(&cfg.JWT); err != nil {
 		panic("failed to read config: " + err.Error())
 	}
 
