@@ -8,7 +8,6 @@ import (
 
 	"github.com/blankspace9/notes-app/internal/config"
 	"github.com/blankspace9/notes-app/internal/domain/models"
-	"github.com/blankspace9/notes-app/internal/lib/jwt"
 	"github.com/blankspace9/notes-app/internal/lib/logger/sl"
 	"github.com/blankspace9/notes-app/internal/storage"
 	"golang.org/x/crypto/bcrypt"
@@ -114,7 +113,7 @@ func (as *AuthService) Login(ctx context.Context, email, password string) (strin
 		return "", "", fmt.Errorf("%s: %w", op, ErrInvalidCredentials)
 	}
 
-	accessToken, refreshToken, err := jwt.NewTokens(user, as.tokens.AccessTokenTTL, as.jwtSecret)
+	accessToken, refreshToken, err := as.NewTokens(user, as.tokens.AccessTokenTTL)
 	if err != nil {
 		as.log.Error("failed to generate tokens", sl.Err(err))
 
@@ -180,7 +179,7 @@ func (as *AuthService) RefreshTokens(ctx context.Context, token string) (string,
 		return "", "", ErrRefreshTokenExpired
 	}
 
-	accessToken, refreshToken, err := jwt.NewTokens(user, as.tokens.AccessTokenTTL, as.jwtSecret)
+	accessToken, refreshToken, err := as.NewTokens(user, as.tokens.AccessTokenTTL)
 	if err != nil {
 		as.log.Error("failed to generate tokens", sl.Err(err))
 

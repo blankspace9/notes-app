@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/blankspace9/notes-app/internal/domain/models"
 	"github.com/gorilla/mux"
@@ -19,6 +20,8 @@ type AuthService interface {
 	RegisterUser(ctx context.Context, email, password string) (userID int64, err error)
 	Login(ctx context.Context, email, password string) (accessToken string, refreshToken string, err error)
 	RefreshTokens(ctx context.Context, token string) (accessToken string, refreshToken string, err error)
+
+	ParseToken(ctx context.Context, token string) (userID int64, expiresAt time.Time, err error)
 }
 
 type NotesService interface {
@@ -48,6 +51,8 @@ func (h *Handler) InitRouter() *mux.Router {
 
 		notes := api.PathPrefix("/notes").Subrouter()
 		{
+			notes.Use(h.authMiddleware)
+
 			notes.HandleFunc("", h.addNote).Methods(http.MethodPost)
 			notes.HandleFunc("", h.getNotes).Methods(http.MethodGet)
 		}
