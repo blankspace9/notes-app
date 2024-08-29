@@ -18,6 +18,7 @@ type Handler struct {
 type AuthService interface {
 	RegisterUser(ctx context.Context, email, password string) (userID int64, err error)
 	Login(ctx context.Context, email, password string) (accessToken string, refreshToken string, err error)
+	RefreshTokens(ctx context.Context, token string) (accessToken string, refreshToken string, err error)
 }
 
 type NotesService interface {
@@ -42,6 +43,7 @@ func (h *Handler) InitRouter() *mux.Router {
 		{
 			auth.HandleFunc("/registration", h.registration).Methods(http.MethodPost)
 			auth.HandleFunc("/login", h.login).Methods(http.MethodPost)
+			auth.HandleFunc("/refresh", h.refresh).Methods(http.MethodPut)
 		}
 
 		notes := api.PathPrefix("/notes").Subrouter()

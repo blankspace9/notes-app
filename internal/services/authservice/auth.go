@@ -10,6 +10,7 @@ import (
 	"github.com/blankspace9/notes-app/internal/domain/models"
 	"github.com/blankspace9/notes-app/internal/lib/jwt"
 	"github.com/blankspace9/notes-app/internal/lib/logger/sl"
+	"github.com/blankspace9/notes-app/internal/storage"
 	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/net/context"
 )
@@ -26,15 +27,32 @@ var (
 	ErrInvalidCredentials = errors.New("invalid credentials")
 	ErrInvalidUserID      = errors.New("invalid user ID")
 	ErrUserExists         = errors.New("user already exists")
+
+	ErrRefreshTokenExpired  = errors.New("refresh token expired")
+	ErrRefreshTokenNotFound = errors.New("refresh token not found")
 )
 
 type UserManager interface {
 	SaveUser(ctx context.Context, email string, passHash []byte) (userID int64, err error)
 	UserByEmail(ctx context.Context, email string) (models.User, error)
+	UserById(ctx context.Context, id int64) (models.User, error)
 }
 
 type TokenManager interface {
 	SaveToken(ctx context.Context, token models.Token) error
+	GetToken(ctx context.Context, token string) (models.Token, error)
+	UpdateToken(ctx context.Context, token models.Token) error
+}
+
+// New return a new instance of the Auth service
+func New(log *slog.Logger, userManager UserManager, tokenManager TokenManager, tokens config.Tokens, jwtSecret string) *AuthService {
+	return &AuthService{
+		log:          log,
+		userManager:  userManager,
+		tokenManager: tokenManager,
+		tokens:       tokens,
+		jwtSecret:    jwtSecret,
+	}
 }
 
 func (as *AuthService) RegisterUser(ctx context.Context, email, password string) (int64, error) {
@@ -53,8 +71,7 @@ func (as *AuthService) RegisterUser(ctx context.Context, email, password string)
 
 	id, err := as.userManager.SaveUser(ctx, email, passHash)
 	if err != nil {
-		// TODO: change errors.New to storage.Error
-		if errors.Is(err, errors.New("storageError (user already exists)")) {
+		if errors.Is(err, storage.ErrUserExists) {
 			log.Warn("user already exists", sl.Err(err))
 
 			return 0, fmt.Errorf("%s: %w", op, ErrUserExists)
@@ -71,16 +88,15 @@ func (as *AuthService) RegisterUser(ctx context.Context, email, password string)
 }
 
 func (as *AuthService) Login(ctx context.Context, email, password string) (string, string, error) {
-	const op = "auth.Login"
+	const op = "services.AuthService.Login"
 
 	log := as.log.With(slog.String("op", op))
 
 	log.Info("attempting to login user")
 
 	user, err := as.userManager.UserByEmail(ctx, email)
-	// TODO: change errors.New to storage.Error
 	if err != nil {
-		if errors.Is(err, errors.New("storageError (user not found)")) {
+		if errors.Is(err, storage.ErrUserNotFound) {
 			as.log.Warn("user not found", sl.Err(err))
 
 			return "", "", fmt.Errorf("%s: %w", op, ErrInvalidCredentials)
@@ -98,7 +114,71 @@ func (as *AuthService) Login(ctx context.Context, email, password string) (strin
 		return "", "", fmt.Errorf("%s: %w", op, ErrInvalidCredentials)
 	}
 
+	accessToken, refreshToken, err := jwt.NewTokens(user, as.tokens.AccessTokenTTL, as.jwtSecret)
+	if err != nil {
+		as.log.Error("failed to generate tokens", sl.Err(err))
+
+		return "", "", fmt.Errorf("%s: %w", op, err)
+	}
+
+	token := models.Token{
+		UserId:    user.ID,
+		Token:     refreshToken,
+		ExpiresAt: time.Now().Add(as.tokens.RefreshTokenTTL),
+	}
+	err = as.tokenManager.SaveToken(ctx, token)
+	if err != nil {
+		if errors.Is(err, storage.ErrTokenExists) {
+			err = as.tokenManager.UpdateToken(ctx, token)
+			if err != nil {
+				as.log.Error("failed to update token", sl.Err(err))
+
+				return "", "", err
+			}
+		} else {
+			as.log.Error("failed to save token", sl.Err(err))
+
+			return "", "", err
+		}
+	}
+
 	log.Info("user logged in successfully")
+
+	return accessToken, refreshToken, nil
+}
+
+func (as *AuthService) RefreshTokens(ctx context.Context, token string) (string, string, error) {
+	const op = "services.AuthService.RefreshTokens"
+
+	log := as.log.With(slog.String("op", op))
+
+	log.Info("attempting to login user")
+
+	session, err := as.tokenManager.GetToken(ctx, token)
+	if err != nil {
+		if errors.Is(err, storage.ErrTokenNotFound) {
+			as.log.Warn("refresh token not found", sl.Err(err))
+
+			return "", "", fmt.Errorf("%s: %w", op, ErrRefreshTokenNotFound)
+		}
+
+		as.log.Error("failed to get token", sl.Err(err))
+
+		return "", "", err
+	}
+
+	user, err := as.userManager.UserById(ctx, session.UserId)
+	if err != nil {
+		as.log.Error("failed to get user", sl.Err(err))
+
+		return "", "", err
+	}
+
+	if session.ExpiresAt.Unix() < time.Now().Unix() {
+		as.log.Error("failed to refresh tokens", sl.Err(ErrRefreshTokenExpired))
+
+		return "", "", ErrRefreshTokenExpired
+	}
 
 	accessToken, refreshToken, err := jwt.NewTokens(user, as.tokens.AccessTokenTTL, as.jwtSecret)
 	if err != nil {
@@ -107,13 +187,28 @@ func (as *AuthService) Login(ctx context.Context, email, password string) (strin
 		return "", "", fmt.Errorf("%s: %w", op, err)
 	}
 
-	if err := as.tokenManager.SaveToken(ctx, models.Token{
+	t := models.Token{
 		UserId:    user.ID,
 		Token:     refreshToken,
 		ExpiresAt: time.Now().Add(as.tokens.RefreshTokenTTL),
-	}); err != nil {
-		return "", "", err
 	}
+	err = as.tokenManager.SaveToken(ctx, t)
+	if err != nil {
+		if errors.Is(err, storage.ErrTokenExists) {
+			err = as.tokenManager.UpdateToken(ctx, t)
+			if err != nil {
+				as.log.Error("failed to update token", sl.Err(err))
+
+				return "", "", err
+			}
+		} else {
+			as.log.Error("failed to save token", sl.Err(err))
+
+			return "", "", err
+		}
+	}
+
+	log.Info("tokens refreshed successfully")
 
 	return accessToken, refreshToken, nil
 }

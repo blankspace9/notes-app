@@ -6,6 +6,8 @@ import (
 	"github.com/blankspace9/notes-app/internal/app/httpapp"
 	"github.com/blankspace9/notes-app/internal/config"
 	"github.com/blankspace9/notes-app/internal/delivery/rest"
+	"github.com/blankspace9/notes-app/internal/services/authservice"
+	"github.com/blankspace9/notes-app/internal/storage"
 )
 
 type App struct {
@@ -13,10 +15,14 @@ type App struct {
 }
 
 func New(log *slog.Logger, cfg *config.Config) *App {
-	// TODO: storage init
-	// TODO: services init
+	storage, err := storage.New(storage.PostgresConnectionInfo(cfg.Storage))
+	if err != nil {
+		panic(err)
+	}
 
-	handler := rest.New(log, nil, nil) // TODO: add services
+	authService := authservice.New(log, storage, storage, cfg.Tokens, cfg.JWT_SECRET)
+
+	handler := rest.New(log, authService, nil) // TODO: add notes service
 
 	httpApp := httpapp.New(log, handler.InitRouter(), cfg.HTTPServer.Port, cfg.HTTPServer.Timeout)
 

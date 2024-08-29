@@ -32,9 +32,9 @@ type (
 		Host     string `env:"POSTGRES_HOST" env-default:"localhost"`
 		Port     string `env:"PORT" env-default:"5432"`
 		Username string `env:"POSTGRES_USERNAME" env-default:"postgres"`
-		Password string `env:"POSTGRES_PASSWORD"`
 		DBName   string `env:"POSTGRES_DB"`
 		SSLMode  string `env:"POSTGRES_SSLMODE"`
+		Password string `env:"POSTGRES_PASSWORD"`
 	}
 )
 
