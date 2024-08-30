@@ -63,6 +63,8 @@ func (ns *NoteService) CreateNote(ctx context.Context, note string, userID int64
 		return 0, nil, fmt.Errorf("%s: %w", op, err)
 	}
 
+	log.Info("note created successfully")
+
 	return id, spellingErrors, nil
 }
 
@@ -85,6 +87,8 @@ func (ns *NoteService) GetNotes(ctx context.Context, userID int64, page, limit i
 
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
+
+	log.Info("notes got successfully")
 
 	return notes, nil
 }

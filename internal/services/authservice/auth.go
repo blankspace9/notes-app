@@ -94,26 +94,26 @@ func (as *AuthService) Login(ctx context.Context, email, password string) (strin
 	user, err := as.userManager.UserByEmail(ctx, email)
 	if err != nil {
 		if errors.Is(err, storage.ErrUserNotFound) {
-			as.log.Warn("user not found", sl.Err(err))
+			log.Warn("user not found", sl.Err(err))
 
 			return "", "", fmt.Errorf("%s: %w", op, ErrInvalidCredentials)
 		}
 
-		as.log.Error("failed to get user", sl.Err(err))
+		log.Error("failed to get user", sl.Err(err))
 
 		return "", "", fmt.Errorf("%s: %w", op, err)
 	}
 
 	err = bcrypt.CompareHashAndPassword(user.PassHash, []byte(password))
 	if err != nil {
-		as.log.Warn("invalid credentials", sl.Err(err))
+		log.Warn("invalid credentials", sl.Err(err))
 
 		return "", "", fmt.Errorf("%s: %w", op, ErrInvalidCredentials)
 	}
 
 	accessToken, refreshToken, err := as.NewTokens(user, as.jwt.AccessTokenTTL)
 	if err != nil {
-		as.log.Error("failed to generate tokens", sl.Err(err))
+		log.Error("failed to generate tokens", sl.Err(err))
 
 		return "", "", fmt.Errorf("%s: %w", op, err)
 	}
@@ -128,12 +128,12 @@ func (as *AuthService) Login(ctx context.Context, email, password string) (strin
 		if errors.Is(err, storage.ErrTokenExists) {
 			err = as.tokenManager.UpdateToken(ctx, token)
 			if err != nil {
-				as.log.Error("failed to update token", sl.Err(err))
+				log.Error("failed to update token", sl.Err(err))
 
 				return "", "", err
 			}
 		} else {
-			as.log.Error("failed to save token", sl.Err(err))
+			log.Error("failed to save token", sl.Err(err))
 
 			return "", "", err
 		}
@@ -154,32 +154,32 @@ func (as *AuthService) RefreshTokens(ctx context.Context, token string) (string,
 	session, err := as.tokenManager.GetToken(ctx, token)
 	if err != nil {
 		if errors.Is(err, storage.ErrTokenNotFound) {
-			as.log.Warn("refresh token not found", sl.Err(err))
+			log.Warn("refresh token not found", sl.Err(err))
 
 			return "", "", fmt.Errorf("%s: %w", op, ErrRefreshTokenNotFound)
 		}
 
-		as.log.Error("failed to get token", sl.Err(err))
+		log.Error("failed to get token", sl.Err(err))
 
 		return "", "", err
 	}
 
 	user, err := as.userManager.UserById(ctx, session.UserId)
 	if err != nil {
-		as.log.Error("failed to get user", sl.Err(err))
+		log.Error("failed to get user", sl.Err(err))
 
 		return "", "", err
 	}
 
 	if session.ExpiresAt.Unix() < time.Now().Unix() {
-		as.log.Error("failed to refresh tokens", sl.Err(ErrRefreshTokenExpired))
+		log.Error("failed to refresh tokens", sl.Err(ErrRefreshTokenExpired))
 
 		return "", "", ErrRefreshTokenExpired
 	}
 
 	accessToken, refreshToken, err := as.NewTokens(user, as.jwt.AccessTokenTTL)
 	if err != nil {
-		as.log.Error("failed to generate tokens", sl.Err(err))
+		log.Error("failed to generate tokens", sl.Err(err))
 
 		return "", "", fmt.Errorf("%s: %w", op, err)
 	}
@@ -194,12 +194,12 @@ func (as *AuthService) RefreshTokens(ctx context.Context, token string) (string,
 		if errors.Is(err, storage.ErrTokenExists) {
 			err = as.tokenManager.UpdateToken(ctx, t)
 			if err != nil {
-				as.log.Error("failed to update token", sl.Err(err))
+				log.Error("failed to update token", sl.Err(err))
 
 				return "", "", err
 			}
 		} else {
-			as.log.Error("failed to save token", sl.Err(err))
+			log.Error("failed to save token", sl.Err(err))
 
 			return "", "", err
 		}

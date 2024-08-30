@@ -3,6 +3,7 @@ package rest
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -10,6 +11,20 @@ import (
 	"github.com/blankspace9/notes-app/internal/domain/auth"
 	"github.com/blankspace9/notes-app/internal/lib/logger/sl"
 )
+
+func (h *Handler) loggingMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		log := h.log.With(slog.String("method", r.Method), slog.String("uri", r.RequestURI))
+
+		log.Info("incoming request")
+
+		startTime := time.Now()
+
+		next.ServeHTTP(w, r)
+
+		log.With(slog.String("duration", time.Since(startTime).String())).Info("request completed")
+	})
+}
 
 // Authentification
 // Checks if the token is valid, and decides to let it go to endpoints or not

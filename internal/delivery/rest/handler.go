@@ -39,6 +39,7 @@ func New(log *slog.Logger, as AuthService, ns NotesService) *Handler {
 
 func (h *Handler) InitRouter() *mux.Router {
 	r := mux.NewRouter()
+	r.Use(h.loggingMiddleware)
 
 	api := r.PathPrefix("/api").Subrouter()
 	{
