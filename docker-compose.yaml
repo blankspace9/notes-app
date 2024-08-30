@@ -11,7 +11,11 @@ services:
       - .env
     ports:
       - "${POSTGRES_PORT}:${POSTGRES_PORT}"
-    # restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 3s
+      timeout: 1s
+      retries: 5
 
   migrator:
     container_name: migrator
@@ -24,7 +28,8 @@ services:
       POSTGRES_HOST: postgres
       DOCKER_ENV: true
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     entrypoint: ["/app/migrator", "--migrations-path", "/app/migrations"]
 
   server:
@@ -40,8 +45,10 @@ services:
     ports:
       - "${SERVER_PORT}:${SERVER_PORT}"
     depends_on:
-      - postgres
-      - migrator
+      postgres:
+        condition: service_healthy
+      migrator:
+        condition: service_started
     # restart: unless-stopped
     command: ["/app/server", "--config", "/app/config/local.yaml"]
 
