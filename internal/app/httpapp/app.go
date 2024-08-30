@@ -1,7 +1,6 @@
 package httpapp
 
 import (
-	"fmt"
 	"log/slog"
 	"net/http"
 	"time"
@@ -12,11 +11,11 @@ import (
 type App struct {
 	log        *slog.Logger
 	httpServer httpserver.Server
-	port       int
+	port       string
 }
 
-func New(log *slog.Logger, httpHandler http.Handler, port int, timeout time.Duration) *App {
-	httpServer := httpserver.NewServer(httpHandler, httpserver.Port(fmt.Sprint(port)), httpserver.ReadTimeout(timeout), httpserver.WriteTimeout(timeout), httpserver.ShutdownTimeout(timeout))
+func New(log *slog.Logger, httpHandler http.Handler, port string, timeout time.Duration) *App {
+	httpServer := httpserver.NewServer(httpHandler, httpserver.Port(port), httpserver.ReadTimeout(timeout), httpserver.WriteTimeout(timeout), httpserver.ShutdownTimeout(timeout))
 
 	return &App{
 		log:        log,
@@ -32,13 +31,13 @@ func (a *App) Run() {
 
 	a.httpServer.Start()
 
-	log.Info("HTTP server is running", slog.Int("port", a.port))
+	log.Info("HTTP server is running", slog.String("port", a.port))
 }
 
 func (a *App) Stop() {
 	const op = "httpapp.Stop"
 
-	a.log.With(slog.String("op", op)).Info("stopping HTTP server", slog.Int("port", a.port))
+	a.log.With(slog.String("op", op)).Info("stopping HTTP server", slog.String("port", a.port))
 
 	a.httpServer.Shutdown()
 }

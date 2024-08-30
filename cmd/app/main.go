@@ -21,7 +21,7 @@ func main() {
 
 	log := setupLogger(cfg.Env)
 
-	log.Info("starting application", slog.String("env", cfg.Env), slog.Int("port", cfg.HTTPServer.Port))
+	log.Info("starting application", slog.String("env", cfg.Env), slog.String("port", cfg.HTTPServer.Port))
 
 	application := app.New(log, cfg)
 

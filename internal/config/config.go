@@ -19,7 +19,7 @@ type (
 	}
 
 	HTTPServer struct {
-		Port    int           `yaml:"port"`
+		Port    string        `env:"SERVER_PORT"`
 		Timeout time.Duration `yaml:"timeout"`
 	}
 
@@ -31,7 +31,7 @@ type (
 
 	Postgres struct {
 		Host     string `env:"POSTGRES_HOST" env-default:"localhost"`
-		Port     string `env:"PORT" env-default:"5432"`
+		Port     string `env:"POSTGRES_PORT" env-default:"5432"`
 		Username string `env:"POSTGRES_USERNAME" env-default:"postgres"`
 		DBName   string `env:"POSTGRES_DB"`
 		SSLMode  string `env:"POSTGRES_SSLMODE"`
@@ -64,8 +64,14 @@ func MustLoadByPath(configPath string, envPath string) *Config {
 		panic("failed to read config: " + err.Error())
 	}
 
-	if err := godotenv.Load(envPath); err != nil {
-		panic("failed to load .env file: " + err.Error())
+	if os.Getenv("DOCKER_ENV") != "true" {
+		if err := godotenv.Load(envPath); err != nil {
+			panic("failed to load .env file: " + err.Error())
+		}
+	}
+
+	if err := cleanenv.ReadEnv(&cfg.HTTPServer); err != nil {
+		panic("failed to read config: " + err.Error())
 	}
 
 	if err := cleanenv.ReadEnv(&cfg.Storage); err != nil {
@@ -86,8 +92,10 @@ func MustLoadByPath(configPath string, envPath string) *Config {
 func MigrateMustLoad() *Postgres {
 	cfg := new(Postgres)
 
-	if err := godotenv.Load(".env"); err != nil {
-		panic("failed to load .env file: " + err.Error())
+	if os.Getenv("DOCKER_ENV") != "true" {
+		if err := godotenv.Load(".env"); err != nil {
+			panic("failed to load .env file: " + err.Error())
+		}
 	}
 
 	if err := cleanenv.ReadEnv(cfg); err != nil {
