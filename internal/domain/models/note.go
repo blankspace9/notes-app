@@ -10,5 +10,5 @@ type Note struct {
 }
 
 type NoteRequest struct {
-	Note string `json:"content"`
+	Note string `json:"note"`
 }
