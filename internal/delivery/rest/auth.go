@@ -102,7 +102,7 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
 		HttpOnly: true,
 		SameSite: http.SameSiteStrictMode,
 		Domain:   "localhost",
-		Path:     "/auth",
+		Path:     "/api/auth",
 	})
 	w.WriteHeader(http.StatusOK)
 	w.Header().Add("Content-Type", "application/json")
@@ -140,7 +140,7 @@ func (h *Handler) refresh(w http.ResponseWriter, r *http.Request) {
 		HttpOnly: true,
 		SameSite: http.SameSiteStrictMode,
 		Domain:   "localhost",
-		Path:     "/auth",
+		Path:     "/api/auth",
 	})
 	w.WriteHeader(http.StatusOK)
 	w.Header().Add("Content-Type", "application/json")
